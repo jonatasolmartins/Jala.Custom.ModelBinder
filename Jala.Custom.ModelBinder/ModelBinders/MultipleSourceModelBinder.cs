@@ -60,6 +60,6 @@ public class MultipleSourceModelBinderProvider : IModelBinderProvider
 {
     public IModelBinder? GetBinder(ModelBinderProviderContext context)
     {
-        return context.Metadata.ModelType == typeof(Page) ? new CustomModelBinder() : null;
+        return context.Metadata.ModelType == typeof(Page) ? new MultipleSourceModelBinder() : null;
     }
 }
