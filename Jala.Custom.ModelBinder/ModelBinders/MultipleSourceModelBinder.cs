@@ -1,4 +1,4 @@
-using Jala.Custom.ModelBinder.Controllers;
+using System.Web;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Newtonsoft.Json;
 
@@ -8,17 +8,29 @@ public class MultipleSourceModelBinder: IModelBinder
 {
     public async Task BindModelAsync(ModelBindingContext bindingContext)
     {
-        Page modelInstance = new();
+        //modelType is the type of the param in the controller action
+        var modelType = bindingContext.ModelMetadata.UnderlyingOrModelType;
+        object modelInstance = null;
         
-        if (bindingContext.ActionContext.HttpContext.Request.Query.Count > 0)
+        if (bindingContext.ActionContext.HttpContext.Request.QueryString.HasValue)
         {
-            var name = bindingContext.ActionContext.HttpContext.Request.Query["name"];
-            modelInstance = new Page()
+            //Value gona be something like ?name=peter&id=22
+            var value = bindingContext.ActionContext.HttpContext.Request.QueryString.Value;
+            var jsonString = ExtractDataFromQuery(value);
+            try
             {
-                Id = 0,
-                Name = name
-            };
+               modelInstance = JsonConvert.DeserializeObject(jsonString, modelType);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                bindingContext.Result = ModelBindingResult.Failed();
+                return;
+            }
             
+            bindingContext.Result = ModelBindingResult.Success(modelInstance);
+            return;
+
         }
 
         string valueFromBody;
@@ -36,13 +48,11 @@ public class MultipleSourceModelBinder: IModelBinder
   
         try
         {
-            var model = JsonConvert.DeserializeObject<Page>(
-                valueFromBody, new JsonSerializerSettings
+            modelInstance = JsonConvert.DeserializeObject(
+                valueFromBody, modelType, new JsonSerializerSettings
                 {
                     NullValueHandling = NullValueHandling.Ignore
                 });
-            
-            modelInstance.Id = model.Id;
         }
         catch (Exception e)
         {
@@ -54,12 +64,29 @@ public class MultipleSourceModelBinder: IModelBinder
         bindingContext.Result = ModelBindingResult.Success(modelInstance);
     }
 
+    private static string ExtractDataFromQuery(string value)
+    {
+        //Converts ?name=peter&id=22 to a key value pair object
+        var nameValueCollection = HttpUtility.ParseQueryString(value);
+        //Then converts it to a dictionary 
+        var dictionary = nameValueCollection.OfType<string>()
+            .ToDictionary(s => s, s => nameValueCollection[s]);
+        //Now we are able to serialize to a json format which is better fot us to deserialize back to the model type
+        return JsonConvert.SerializeObject(dictionary);
+    }
+
 }
 
-public class MultipleSourceModelBinderProvider : IModelBinderProvider
-{
-    public IModelBinder? GetBinder(ModelBinderProviderContext context)
-    {
-        return context.Metadata.ModelType == typeof(Page) ? new MultipleSourceModelBinder() : null;
-    }
-}
+// public class MultipleSourceModelBinderProvider : IModelBinderProvider
+// {
+//     public IModelBinder? GetBinder(ModelBinderProviderContext context)
+//     {
+//         var attributes = context.Metadata.ModelType.GetCustomAttributes(typeof(FromQueryAndBody), false);
+//         if (attributes.Length > 0)
+//         {
+//             return new MultipleSourceModelBinder();
+//         }
+//
+//         return null;
+//     }
+// }
