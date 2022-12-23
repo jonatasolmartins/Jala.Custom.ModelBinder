@@ -6,9 +6,8 @@ namespace Jala.Custom.ModelBinder.CustomAttributes;
 //[AttributeUsage(AttributeTargets.All)]
 public class FromQueryAndBody: ModelBinderAttribute
 {
-    //public readonly Type? ParamType;
-    public FromQueryAndBody(/*Type? paramType*/):base(typeof(Jala.Custom.ModelBinder.ModelBinders.MultipleSourceModelBinder))
+    public FromQueryAndBody():base(typeof(Jala.Custom.ModelBinder.ModelBinders.MultipleSourceModelBinder))
     {
-        //ParamType = paramType;
+
     }
 }
